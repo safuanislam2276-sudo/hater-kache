@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">হাতের কাছে</string>
+    <string name="app_tagline">বিশ্বাস • কাজ • সেবা</string>
+    <string name="find_mistri">মিস্ত্রি খুঁজুন</string>
+    <string name="search_hint">মিস্ত্রি বা কাজ খুঁজুন...</string>
+    <string name="pro_badge">PRO</string>
+    <string name="verified_badge">যাচাইকৃত</string>
+</resources>

@@ -1,0 +1,7 @@
+{
+  "name": "হাতের কাছে",
+  "description": "দক্ষ কারিগর ও মিস্ত্রি খোঁজার বিশ্বস্ত মার্কেটপ্লেস (Hater Kache) - বিশ্বাস • কাজ • সেবা",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
