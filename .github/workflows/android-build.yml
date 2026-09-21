@@ -5,34 +5,164 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
+    name: Build Android APK
     runs-on: ubuntu-latest
-    
+
     steps:
+      # 1. Download project source code
       - name: Checkout code
-        uses: actions/checkout@v4
-      
+        uses: actions/checkout@v6
+
+      # 2. Java 17
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
+          distribution: temurin
           java-version: '17'
-          distribution: 'temurin'
-          cache: gradle
-      
-      - name: Generate Gradle Wrapper
+
+      # 3. Detect Gradle version required by the Android Gradle Plugin
+      - name: Detect Android Gradle Plugin and Gradle version
+        id: detect
+        shell: bash
         run: |
-          if [ ! -f "gradlew" ]; then
-            echo "Generating gradle wrapper..."
-            gradle wrapper --gradle-version 8.0
+          set -e
+
+          echo "Searching for Android Gradle Plugin version..."
+
+          AGP_VERSION=$(grep -RhoE \
+            "com\.android\.application['\"[:space:]]*\)?[[:space:]]*(version[[:space:]]*)?['\"]?[0-9]+\.[0-9]+(\.[0-9]+)?['\"]?" \
+            --include='*.gradle' \
+            --include='*.gradle.kts' \
+            . 2>/dev/null \
+            | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' \
+            | head -n 1 || true)
+
+          if [ -z "$AGP_VERSION" ]; then
+            AGP_VERSION=$(grep -RhoE \
+              "agp[[:space:]]*=[[:space:]]*['\"][0-9]+\.[0-9]+(\.[0-9]+)?['\"]" \
+              --include='libs.versions.toml' \
+              . 2>/dev/null \
+              | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' \
+              | head -n 1 || true)
           fi
-          chmod +x gradlew
-      
-      - name: Build with Gradle
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
-      
+
+          echo "Detected AGP version: ${AGP_VERSION:-not found}"
+
+          if [ -z "$AGP_VERSION" ]; then
+            echo "ERROR: Android Gradle Plugin version could not be detected."
+            echo "Please check your project's build.gradle, build.gradle.kts or libs.versions.toml."
+            exit 1
+          fi
+
+          AGP_MAJOR=$(echo "$AGP_VERSION" | cut -d. -f1)
+          AGP_MINOR=$(echo "$AGP_VERSION" | cut -d. -f2)
+
+          case "${AGP_MAJOR}.${AGP_MINOR}" in
+            8.0)
+              GRADLE_VERSION="8.0"
+              ;;
+            8.1)
+              GRADLE_VERSION="8.0"
+              ;;
+            8.2)
+              GRADLE_VERSION="8.2"
+              ;;
+            8.3)
+              GRADLE_VERSION="8.4"
+              ;;
+            8.4)
+              GRADLE_VERSION="8.6"
+              ;;
+            8.5|8.6)
+              GRADLE_VERSION="8.7"
+              ;;
+            8.7)
+              GRADLE_VERSION="8.9"
+              ;;
+            8.8)
+              GRADLE_VERSION="8.10.2"
+              ;;
+            8.9|8.10)
+              GRADLE_VERSION="8.11.1"
+              ;;
+            8.11|8.12|8.13)
+              GRADLE_VERSION="8.13"
+              ;;
+            9.0)
+              GRADLE_VERSION="9.1.0"
+              ;;
+            *)
+              echo "ERROR: Unsupported or unknown AGP version: $AGP_VERSION"
+              exit 1
+              ;;
+          esac
+
+          echo "AGP version: $AGP_VERSION"
+          echo "Required Gradle version: $GRADLE_VERSION"
+
+          echo "agp-version=$AGP_VERSION" >> "$GITHUB_OUTPUT"
+          echo "gradle-version=$GRADLE_VERSION" >> "$GITHUB_OUTPUT"
+
+      # 4. Configure the correct Gradle version
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: ${{ steps.detect.outputs.gradle-version }}
+
+      # 5. Generate wrapper only if the project does not already have one
+      - name: Prepare Gradle Wrapper
+        shell: bash
+        run: |
+          set -e
+
+          if [ -f "./gradlew" ]; then
+            echo "Existing Gradle Wrapper found."
+            chmod +x ./gradlew
+          else
+            echo "No Gradle Wrapper found."
+            echo "Generating wrapper using Gradle ${{ steps.detect.outputs.gradle-version }}..."
+            gradle wrapper --gradle-version "${{ steps.detect.outputs.gradle-version }}"
+            chmod +x ./gradlew
+          fi
+
+      # 6. Show build environment
+      - name: Show build environment
+        shell: bash
+        run: |
+          echo "Java version:"
+          java -version
+
+          echo ""
+          echo "Gradle version:"
+          ./gradlew --version
+
+          echo ""
+          echo "Android Gradle Plugin:"
+          echo "${{ steps.detect.outputs.agp-version }}"
+
+      # 7. Build Debug APK
+      - name: Build Debug APK
+        shell: bash
+        run: |
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      # 8. Find generated APK
+      - name: Find APK
+        shell: bash
+        run: |
+          echo "Searching for APK files..."
+          find . -type f -path "*/build/outputs/apk/debug/*.apk" -print
+
+      # 9. Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: hater-kache-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            **/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
