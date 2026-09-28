@@ -5,6 +5,9 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -29,32 +32,18 @@ jobs:
           chmod +x gradlew
           ls -la gradlew
 
-      - name: Create debug keystore
-        run: |
-          keytool -genkeypair \
-            -v \
-            -keystore "$GITHUB_WORKSPACE/debug.keystore" \
-            -storetype JKS \
-            -alias androiddebugkey \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass android \
-            -keypass android \
-            -dname "CN=Android Debug,O=Android,C=US" \
-            -noprompt
-
       - name: Build Debug APK
         run: |
           echo "Starting build..."
           ./gradlew assembleDebug --no-daemon --stacktrace
           echo "Build completed"
 
-      - name: Find and Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: hater-kache-apk
-          path: |
-            app/build/outputs/apk/debug/*.apk
-            build/outputs/apk/debug/*.apk
-            *.apk
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="apk-build-${{ github.run_number }}"
+          gh release create "$TAG" \
+            app/build/outputs/apk/debug/*.apk \
+            --title "Hater Kache APK Build ${{ github.run_number }}" \
+            --notes "Debug APK built automatically by GitHub Actions."
