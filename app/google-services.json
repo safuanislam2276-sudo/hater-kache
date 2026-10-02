@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1033042394508",
+    "project_id": "hater-kache-15889",
+    "storage_bucket": "hater-kache-15889.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1033042394508:android:0fdbd07532ade67db96aa9",
+        "android_client_info": {
+          "package_name": "com.haterkache.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB34-s34xkcpq1u5fBUPNSc5Pog9r-5nBg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
