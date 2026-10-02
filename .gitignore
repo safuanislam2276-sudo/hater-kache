@@ -16,3 +16,6 @@
 local.properties
 .env
 debug.keystore
+# Firebase config - do not commit
+app/google-services.json
+google-services.json
