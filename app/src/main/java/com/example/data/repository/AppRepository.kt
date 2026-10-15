@@ -470,18 +470,16 @@ class AppRepository(context: Context) {
     suspend fun login(email: String, password: String? = null): UserEntity? {
         val cleanEmail = email.trim()
 
-        if (!password.isNullOrBlank()) {
-            val fbResult = firebaseAuth.signInWithEmail(cleanEmail, password)
-            if (fbResult.isFailure) {
-                // If it's the owner email, allow bypass
-                val isOwner = cleanEmail.equals("safuanislam2276@gmail.com", ignoreCase = true)
-                val localUser = userDao.getUserByEmail(cleanEmail)
-                if (!isOwner && localUser == null) {
-                    val err = fbResult.exceptionOrNull()?.message ?: "লগইন ব্যর্থ হয়েছে"
-                    throw Exception(err)
-                }
-            }
-        }
+        val cleanPassword = password?.takeIf { it.isNotBlank() }
+    ?: throw Exception("ইমেইল ও পাসওয়ার্ড দিন")
+
+val fbResult = firebaseAuth.signInWithEmail(cleanEmail, cleanPassword)
+
+if (fbResult.isFailure) {
+    val err = fbResult.exceptionOrNull()?.message
+        ?: "লগইন ব্যর্থ হয়েছে"
+    throw Exception(err)
+}
 
         var user = userDao.getUserByEmail(cleanEmail)
         val existingMistri = mistriDao.getMistriByEmail(cleanEmail)
